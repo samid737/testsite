@@ -1,0 +1,44 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  solution: '\*\*/\*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+  dotNetFramework: 'net6.0'
+  dotNetVersion: '6.0.x'
+  targetRuntime: 'win-x86'
+
+steps:
+# Set .NET version
+- task: UseDotNet@2
+  displayName: "Set .NET version"
+  inputs:
+    version: $(dotNetVersion)
+    includePreviewVersions: true
+    
+# Build website with .NET 6
+- script: dotnet build --configuration $(buildConfiguration)
+  displayName: 'Build website'
+
+# Publish website with .NET 6 
+- task: DotNetCoreCLI@2
+  displayName: "Publish website"
+  inputs:
+    command: publish
+    publishWebProjects: True
+    arguments: '--configuration $(BuildConfiguration) --framework $(dotNetFramework) --runtime $(targetRuntime) --output $(Build.ArtifactStagingDirectory)'
+    zipAfterPublish: True
+
+# Deploy website to Azure
+- task: AzureRmWebAppDeployment@4
+  displayName: "Deploy website to Azure"
+  inputs:
+    ConnectionType: 'AzureRM'
+    azureSubscription: 'Cloudninja-Azure'
+    appType: 'webApp'
+    WebAppName: 'WebsiteBlog'
+    packageForLinux: '$(Build.ArtifactStagingDirectory)/\*\*/\*.zip'
